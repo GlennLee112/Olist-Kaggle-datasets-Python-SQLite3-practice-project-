@@ -1,2 +1,2 @@
-# SQL-Tk-practice-project
-Gap project to practice and improve raw SQL query skill as well as implementing SQL query within Python environment
+# Python-SQL-practice-project
+Practice project to improve SQL querying skill as well as implementing SQL query within Python environment
