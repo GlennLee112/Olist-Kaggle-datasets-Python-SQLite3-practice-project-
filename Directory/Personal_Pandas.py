@@ -70,8 +70,21 @@ def date_max(df, column):
     return max_of_date
 
 
-def csv_out(df_in, file_name, path, index=False, date_format='%Y-%d-%m'):
-    """"output function for dataframe to got to excel output file"""
+def csv_out(df_in:pd.DataFrame,
+            file_name:str,
+            path:str,
+            index:bool=False,
+            date_format:str='%Y-%d-%m',
+            column_use:list|None = None):
+
+    """Output function for dataframe to got to excel output file
+    Param:
+    1. df_in (dataframe) - the dataframe to be used
+    2. file_name (str) - string that will be joined with base path to become file name
+    3. path (str) - folder path to be output to
+    4. index (bool) - index (True) or no index (False); False by default
+    5. date_format (str) - date format to be used
+    6. column_use (list|None) - pass in list of columns to be used; None by default / use all column"""
     # Create folder path if not exist
     if not os.path.exists(path):
         os.makedirs(path)
@@ -83,6 +96,10 @@ def csv_out(df_in, file_name, path, index=False, date_format='%Y-%d-%m'):
     # Future implementation, auto amend false extension
     # else:
     #     file_name = file_name+'.csv'
+
+    # column assign
+    if column_use is not None:
+        df_in = df_in[column_use]
 
     output_path = os.path.join(path, file_name)
     df_in.to_csv(output_path, index=index, date_format=date_format)

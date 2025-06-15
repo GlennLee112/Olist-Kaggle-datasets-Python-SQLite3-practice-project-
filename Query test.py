@@ -2,8 +2,11 @@ import sqlite3
 import os
 import pandas as pd
 import Directory.File_Manager as p_fm
+import Directory.Personal_Pandas as p_pd
+from datetime import datetime
 
 base:str = os.path.dirname(__file__)
+out_path:str = os.path.join(base,"Out")
 sqlite_path:str = os.path.join(base, "Dataset", "olist.sqlite")
 
 connection = sqlite3.connect(sqlite_path)
@@ -11,6 +14,8 @@ connection = sqlite3.connect(sqlite_path)
 # data from: https://www.kaggle.com/datasets/terencicp/e-commerce-dataset-by-olist-as-an-sqlite-database
 
 # 0. print tables inside sqlite database
+
+# product_list = super()
 
 # 1. query
 with connection as conn:
@@ -42,12 +47,64 @@ with connection as conn:
                     GROUP BY
                         s.seller_id"""
 
+    # Method 1. raw query
+
+
+    # Method 2. Pandas
     df_seller = pd.read_sql_query(seller_query, con=conn)
 
-    # 2. get orders table inside sqlite database
-    orders_query = "SELECT * FROM orders"
+    # New order query, include:
+    # 1. all columns from orders
+    # 2. order reviews (Join) - order_id, review_score
+    # 3. seller
 
-    df_order = pd.read_sql_query(orders_query, con=conn)
+    # create a date subquery to determine the max and min date of purchase
+    min_max_order_date = """SELECT os.order_purchase_timestamp
+                            FROM orders os;"""
+
+    df_min_max_date = pd.read_sql_query(min_max_order_date, con=conn)
+    df_min_max_date["order_purchase_timestamp"] = df_min_max_date["order_purchase_timestamp"].astype(str)
+    min_date = df_min_max_date["order_purchase_timestamp"].min()
+    max_date = df_min_max_date["order_purchase_timestamp"].max()
+    print(f'min date is:{min_date}, max date is: {max_date}')
+    print(df_min_max_date)
+    # print(datetime.strptime(min_date.iloc[0],"%Y-%m-%d %H:%M:%S"))
+    # print(datetime.strptime(max_date.iloc[0],"%Y-%m-%d %H:%M:%S"))
+    # print()
+
+    orders_query = """SELECT
+                        os.order_id,
+                        os.customer_id,
+                        os.order_status,
+                        os.order_purchase_timestamp,
+                        os.order_approved_at,
+                        os.order_delivered_carrier_date,
+                        os.order_delivered_customer_date,
+                        os.order_estimated_delivery_date
+                    FROM orders os
+                    WHERE 
+                         os.order_purchase_timestamp BETWEEN ? AND ?;"""
+
+    df_order = pd.read_sql_query(orders_query, con=conn, params=[min_date,max_date])
+
+    order_items_query = """SELECT
+                        oi.order_id,
+                        oi.seller_id
+                    FROM order_items oi
+                    GROUP BY
+                        oi.order_id;"""
+
+    df_order_items = pd.read_sql_query(order_items_query, con=conn)
+
+    df_order_and_seller = df_order.merge(df_order_items, on=["order_id"])
+
+    print(df_order_and_seller)
+
+    df_order_and_seller_col = ['order_id', 'customer_id', 'order_status', 'order_purchase_timestamp',
+                               'order_approved_at', 'order_delivered_carrier_date', 'order_delivered_customer_date',
+                               'order_estimated_delivery_date', 'seller_id']
+
+    p_pd.csv_out(df_order_and_seller, "order and seller", out_path, column_use=df_order_and_seller_col)
 
     # 3. get completed sales by seller
 
@@ -69,7 +126,7 @@ with connection as conn:
                             s.seller_id,
                             s.seller_city,
                             s.seller_zip_code_prefix,
-                            COUNT(DISTINCT o.order_id) AS delivered_order_count
+                            COUNT(DISTINCT (o.order_id || '_' || product_id)) AS delivered_order_count
                         FROM
                             sellers s
                         JOIN order_items oi ON s.seller_id = oi.seller_id
@@ -129,22 +186,27 @@ csv_path = os.path.join(base,"Out")
 
 p_fm.file_dir_create(csv_path)
 
-# df output
+# df output test
 df_seller.to_csv(os.path.join(csv_path, "seller list.csv"), index=False)
-df_order.to_csv(os.path.join(csv_path, "order list.csv"), index=False)
+print(df_seller.columns)
 df_sales_by_seller.to_csv(os.path.join(csv_path, "seller sales.csv"), index=False)
 
-print(df_seller.columns)
-print(df_order.columns)
+
+# df_order.to_csv(os.path.join(csv_path, "order list.csv"), index=False)
+# print(df_order.columns)
+# delivered_date = df_order["order_delivered_customer_date"] #.dropna()
+# print(len(delivered_date))
 
 unique_seller = df_seller["seller_id"].unique()
-delivered_date = df_order["order_delivered_customer_date"] #.dropna()
+
 
 print(unique_seller)
 print(len(unique_seller))
 
-print(len(delivered_date))
+
 print(df_sales_by_seller_debug)
 print(df_sales_by_seller)
 # print(df_sales_by_seller_and_year)
+
+# data output for use by Tableau
 
