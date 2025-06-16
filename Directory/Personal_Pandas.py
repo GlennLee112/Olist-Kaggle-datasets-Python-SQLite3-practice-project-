@@ -1,4 +1,6 @@
 import os
+from functools import reduce
+
 import pandas as pd
 import datetime as dt
 from dateutil.relativedelta import relativedelta, MO
@@ -125,11 +127,29 @@ def intersection_return(list_1, list_2):
 
 def df_merge(df_1, df_2, how='0'):
     # Simplified version without output function, simple merging of df only
-    """"Append function with datatype selector, use this function to merge two dataframe of same columns"""
+    """Append function with datatype selector, use this function to merge two dataframe of same columns"""
 
     out_df = df_1.merge(df_2, how="inner")
 
     return out_df
+
+def df_batch_merge(df_list:list,
+                   col_use:str,
+                   merge_type:str="0")-> pd.DataFrame:
+    """Merge multiple dataframes into one"""
+    merge_type_dict = {"0":"inner",
+                      "1":"left",
+                      "2":"right",
+                      "3":"outer"}
+
+    merge_use = merge_type_dict[merge_type]
+    print(merge_use)
+
+    # Ref: https://stackoverflow.com/questions/44327999/how-to-merge-multiple-dataframes
+
+    df_merged = reduce(lambda left,right: pd.merge(left, right, on=[col_use],how=merge_use), df_list)
+
+    return df_merged
 
 
 def date_range_list(time_1, time_2, time_format="%Y-%m-%d"):

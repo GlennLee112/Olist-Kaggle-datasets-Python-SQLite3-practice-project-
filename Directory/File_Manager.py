@@ -45,7 +45,7 @@ def test_path(path):
     return test_path_result
 
 
-def file_dir_create(path):
+def file_dir_create(path:str|list):
     # Test if variable provided is list; if not convert string or provided file to list
     if not isinstance(path, list):
         path = [path]

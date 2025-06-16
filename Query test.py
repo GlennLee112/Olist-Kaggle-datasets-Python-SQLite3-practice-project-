@@ -1,5 +1,7 @@
 import sqlite3
 import os
+from functools import reduce
+
 import pandas as pd
 import Directory.File_Manager as p_fm
 import Directory.Personal_Pandas as p_pd
@@ -15,24 +17,13 @@ connection = sqlite3.connect(sqlite_path)
 
 # 0. print tables inside sqlite database
 
-# product_list = super()
 
-# 1. query
-with connection as conn:
-    cursor = conn.cursor()
+min_max_order_date = """SELECT os.order_purchase_timestamp
+                        FROM orders os;"""
 
-    # 0. print tables inside sqlite database
-    base_query = "SELECT name FROM sqlite_master WHERE type='table'"
 
-    cursor.execute(base_query)
-    results = cursor.fetchall()
-    print("Raw Query:", base_query)
-    print("Results:", results)
-
-    # 1. get sellers table inside sql database
-    # Include the following columns:
-    # 1) s.seller_id, 2) s.seller_zip_code_prefix, 3) s.seller_city, 4) s.seller_state, 5) g.geolocation_lat,
-    # 6) g.geolocation_lng, 7)g.geolocation_city
+# 1. Query function
+def seller_query_func(conn:sqlite3.Connection)->pd.DataFrame:
 
     seller_query = """SELECT 
                         s.seller_id,
@@ -47,52 +38,107 @@ with connection as conn:
                     GROUP BY
                         s.seller_id"""
 
-    # Method 1. raw query
+    with conn:
+        result = pd.read_sql_query(seller_query, con=conn)
 
+    return result
 
-    # Method 2. Pandas
-    df_seller = pd.read_sql_query(seller_query, con=conn)
+def order_query_func(conn:sqlite3.Connection,
+                     max_date:str,
+                     min_date:str)->pd.DataFrame:
 
+    """New order query function:
+
+    Query orders and join with review score"""
+
+    orders_query = """SELECT
+                        o.order_id,
+                        o.customer_id,
+                        o.order_status,
+                        o.order_purchase_timestamp,
+                        o.order_approved_at,
+                        o.order_delivered_carrier_date,
+                        o.order_delivered_customer_date,
+                        o.order_estimated_delivery_date
+                    FROM orders o
+                    WHERE 
+                         o.order_purchase_timestamp BETWEEN ? AND ?;"""
+
+    order_items_query = """SELECT
+                            oi.order_id,
+                            oi.seller_id
+                        FROM 
+                            order_items oi
+                        JOIN orders o ON oi.order_id = o.order_id
+                        WHERE
+                            o.order_purchase_timestamp BETWEEN ? AND ?
+                        GROUP BY
+                            oi.order_id;"""
+
+    order_reviews_query = """SELECT
+                            ors.order_id,
+                            ors.review_score
+                        FROM 
+                            order_reviews ors
+                        JOIN orders o ON ors.order_id = o.order_id
+                        WHERE
+                            o.order_purchase_timestamp BETWEEN ? AND ?;"""
+
+    with conn:
+        order_result = pd.read_sql_query(orders_query, con=conn, params=[min_date, max_date])
+        order_items_result = pd.read_sql_query(order_items_query, con=conn, params=[min_date, max_date])
+        order_reviews_result = pd.read_sql_query(order_reviews_query, con=conn, params=[min_date, max_date])
+
+    df_list_to_use = [order_result, order_items_result, order_reviews_result]
+
+    final_df = p_pd.df_batch_merge(df_list_to_use, "order_id", "3")
+
+    return final_df
+
+df_seller = seller_query_func(connection)
+
+print(df_seller)
+
+# 1. query
+with connection as conn:
+    cursor = conn.cursor()
+
+    # 0. print tables inside sqlite database
+    base_query = "SELECT name FROM sqlite_master WHERE type='table'"
+
+    cursor.execute(base_query)
+    results = cursor.fetchall()
+    print("Raw Query:", base_query)
+    print("Results:", results)
     # New order query, include:
     # 1. all columns from orders
     # 2. order reviews (Join) - order_id, review_score
     # 3. seller
 
     # create a date subquery to determine the max and min date of purchase
-    min_max_order_date = """SELECT os.order_purchase_timestamp
-                            FROM orders os;"""
-
     df_min_max_date = pd.read_sql_query(min_max_order_date, con=conn)
     df_min_max_date["order_purchase_timestamp"] = df_min_max_date["order_purchase_timestamp"].astype(str)
-    min_date = df_min_max_date["order_purchase_timestamp"].min()
-    max_date = df_min_max_date["order_purchase_timestamp"].max()
-    print(f'min date is:{min_date}, max date is: {max_date}')
-    print(df_min_max_date)
-    # print(datetime.strptime(min_date.iloc[0],"%Y-%m-%d %H:%M:%S"))
-    # print(datetime.strptime(max_date.iloc[0],"%Y-%m-%d %H:%M:%S"))
-    # print()
-
-    orders_query = """SELECT
-                        os.order_id,
-                        os.customer_id,
-                        os.order_status,
-                        os.order_purchase_timestamp,
-                        os.order_approved_at,
-                        os.order_delivered_carrier_date,
-                        os.order_delivered_customer_date,
-                        os.order_estimated_delivery_date
-                    FROM orders os
-                    WHERE 
-                         os.order_purchase_timestamp BETWEEN ? AND ?;"""
-
-    df_order = pd.read_sql_query(orders_query, con=conn, params=[min_date,max_date])
 
     order_items_query = """SELECT
-                        oi.order_id,
-                        oi.seller_id
-                    FROM order_items oi
-                    GROUP BY
-                        oi.order_id;"""
+                            oi.order_id,
+                            oi.seller_id
+                        FROM 
+                            order_items oi
+                        GROUP BY
+                            oi.order_id;"""
+
+    orders_query = """SELECT
+                        o.order_id,
+                        o.customer_id,
+                        o.order_status,
+                        o.order_purchase_timestamp,
+                        o.order_approved_at,
+                        o.order_delivered_carrier_date,
+                        o.order_delivered_customer_date,
+                        o.order_estimated_delivery_date
+                    FROM orders o
+                    WHERE 
+                         o.order_purchase_timestamp BETWEEN ? AND ?;"""
 
     df_order_items = pd.read_sql_query(order_items_query, con=conn)
 
@@ -183,6 +229,7 @@ with connection as conn:
     # df_sales_by_seller_and_year = pd.read_sql_query(sale_by_seller_and_date_query, con=conn, params=[2016,2017])
 
 csv_path = os.path.join(base,"Out")
+data_path = os.path.join(base, "Data")
 
 p_fm.file_dir_create(csv_path)
 
