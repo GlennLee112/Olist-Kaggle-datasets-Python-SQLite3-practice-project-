@@ -25,7 +25,7 @@ def variable_name_extract(variable):
 
 
 def get_file_paths(directory):
-    """"Function to return all file path inside a given folder"""
+    """Function to return all file path inside a given folder"""
     # Ref:
     # https://stackoverflow.com/questions/9816816/get-absolute-paths-of-all-files-in-a-directory
     path = []

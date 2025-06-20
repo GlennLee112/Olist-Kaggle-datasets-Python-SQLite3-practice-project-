@@ -23,7 +23,7 @@ min_max_order_date = """SELECT os.order_purchase_timestamp
 
 
 # 1. Query function
-def seller_query_func(conn:sqlite3.Connection)->pd.DataFrame:
+def seller_query_func(conn_use:sqlite3.Connection)->pd.DataFrame:
 
     seller_query = """SELECT 
                         s.seller_id,
@@ -38,12 +38,12 @@ def seller_query_func(conn:sqlite3.Connection)->pd.DataFrame:
                     GROUP BY
                         s.seller_id"""
 
-    with conn:
-        result = pd.read_sql_query(seller_query, con=conn)
+    with conn_use:
+        result = pd.read_sql_query(seller_query, con=conn_use)
 
     return result
 
-def order_query_func(conn:sqlite3.Connection,
+def order_query_func(conn_use:sqlite3.Connection,
                      max_date:str,
                      min_date:str)->pd.DataFrame:
 
@@ -84,10 +84,10 @@ def order_query_func(conn:sqlite3.Connection,
                         WHERE
                             o.order_purchase_timestamp BETWEEN ? AND ?;"""
 
-    with conn:
-        order_result = pd.read_sql_query(orders_query, con=conn, params=[min_date, max_date])
-        order_items_result = pd.read_sql_query(order_items_query, con=conn, params=[min_date, max_date])
-        order_reviews_result = pd.read_sql_query(order_reviews_query, con=conn, params=[min_date, max_date])
+    with conn_use:
+        order_result = pd.read_sql_query(orders_query, con=conn_use, params=[min_date, max_date])
+        order_items_result = pd.read_sql_query(order_items_query, con=conn_use, params=[min_date, max_date])
+        order_reviews_result = pd.read_sql_query(order_reviews_query, con=conn_use, params=[min_date, max_date])
 
     df_list_to_use = [order_result, order_items_result, order_reviews_result]
 

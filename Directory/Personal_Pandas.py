@@ -8,7 +8,8 @@ from Directory import jnt_data
 
 
 # def datetime_conversion(subject, format = "%Y-%m-%d %H:%M:%S"):
-def convert_to_datetime(df, cols=None):
+def convert_to_datetime(df:pd.DataFrame,
+                        cols:list|str=None):
     """simple conversion function to change columns or entire dataframe to desired datatype using '.astype'
 
     Base code from: https://stackoverflow.com/questions/66189787/python-convert-multiple-columns-to-datetime-using-for-loop
@@ -136,7 +137,7 @@ def df_merge(df_1, df_2, how='0'):
 def df_batch_merge(df_list:list,
                    col_use:str,
                    merge_type:str="0")-> pd.DataFrame:
-    """Merge multiple dataframes into one"""
+    """Merge multiple dataframes into one with selection"""
     merge_type_dict = {"0":"inner",
                       "1":"left",
                       "2":"right",
@@ -146,11 +147,9 @@ def df_batch_merge(df_list:list,
     print(merge_use)
 
     # Ref: https://stackoverflow.com/questions/44327999/how-to-merge-multiple-dataframes
-
     df_merged = reduce(lambda left,right: pd.merge(left, right, on=[col_use],how=merge_use), df_list)
 
     return df_merged
-
 
 def date_range_list(time_1, time_2, time_format="%Y-%m-%d"):
     """Convert range of dates to list of user defined time format
