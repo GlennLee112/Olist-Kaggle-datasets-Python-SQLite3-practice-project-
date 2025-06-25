@@ -1,6 +1,5 @@
 import os
 import pandas as pd
-
 from Directory.Personal_Pandas import convert_to_datetime
 
 base = os.path.dirname(__file__)
@@ -16,8 +15,10 @@ print(df_raw.info())
 # Step 0. preprocessing
 # Add delivery time column (order_delivered_customer_date - order_purchase_timestamp) & estimation dif (order_delivered_customer_date - order_estimated_delivery_date)
 df_new = df_raw
-col_to_convert = ["order_delivered_customer_date", "order_purchase_timestamp"]
+col_to_convert = ["order_delivered_customer_date", "order_purchase_timestamp", "order_approved_at",
+                  "order_delivered_carrier_date", "order_estimated_delivery_date"]
 print(df_new.info())
+df_new = convert_to_datetime(df_new, col_to_convert)
 df_new["Delivery Time Taken"] = df_new["order_delivered_customer_date"] - df_new["order_purchase_timestamp"]
 
 print(df_new["Delivery Time Taken"])
