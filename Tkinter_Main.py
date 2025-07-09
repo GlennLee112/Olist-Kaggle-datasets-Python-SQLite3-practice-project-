@@ -34,11 +34,9 @@ sqlite_path:str = os.path.join(base, "Dataset", "olist.sqlite")
 connection = sqlite3.connect(sqlite_path, check_same_thread=False)
 # connection = sqlite3.connect(sqlite_path, check_same_thread=True)
 
-
 # initial query for max and min date
 with connection as conn:
     min_max_date_df = max_min_sales_date(conn)
-
 
 # get the first (min) and last (max) date
 min_date = min_max_date_df.iloc[0, 0]
@@ -114,10 +112,11 @@ class Application(Tk):
                             query_ongoing_dialog_label = Label(query_ongoing_dialog, text="Querying")
                             query_ongoing_dialog_label.pack()
 
-
+                            # Conn 1 querying
                             with connection as conn_1:
                                 df_1 = seller_query_func(conn_1)
                                 print(df_1)
+                            # Conn 2 querying
                             with connection as conn_2:
                                 df_2 = order_query_func(conn_2, start_date, end_date, output_path=out_path,
                                                                data_only=False)
@@ -125,6 +124,7 @@ class Application(Tk):
 
                             query_ongoing_dialog.after(0, lambda: query_ongoing_dialog_label.
                                                        config(text='Completed'))
+
                             query_ongoing_dialog.after(2500, query_ongoing_dialog.destroy)
 
                         except Exception as e:
