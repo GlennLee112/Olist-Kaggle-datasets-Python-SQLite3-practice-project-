@@ -7,13 +7,12 @@ from tkinter import (Tk,
                      messagebox)
 import tkcalendar
 # data
-import pandas as pd
+# import pandas as pd
 # sql
 import sqlite3
 # util
 import os
 # SQL
-import olist_query
 from olist_query import (query_out,
                          max_min_sales_date,
                          seller_query_func,
@@ -113,14 +112,14 @@ class Application(Tk):
                             query_ongoing_dialog_label.pack()
 
                             # Conn 1 querying
-                            with connection as conn_1:
-                                df_1 = seller_query_func(conn_1)
-                                print(df_1)
+                            # with connection as conn_1:
+                            #     df_1 = seller_query_func(conn_1)
+                                # print(df_1)
                             # Conn 2 querying
                             with connection as conn_2:
                                 df_2 = order_query_func(conn_2, start_date, end_date, output_path=out_path,
                                                                data_only=False)
-                                print(df_2)
+                                # print(df_2)
 
                             query_ongoing_dialog.after(0, lambda: query_ongoing_dialog_label.
                                                        config(text='Completed'))

@@ -1,13 +1,13 @@
 import sqlite3
 import os
-from functools import reduce
+# from functools import reduce
 
 import pandas as pd
-from openpyxl.styles.builtins import output
+# from openpyxl.styles.builtins import output
 
-import Directory.File_Manager as p_fm
+# import Directory.File_Manager as p_fm
 import Directory.Personal_Pandas as p_pd
-from datetime import datetime
+# from datetime import datetime
 
 base:str = os.path.dirname(__file__)
 out_path:str = os.path.join(base,"Out")
@@ -153,6 +153,31 @@ def order_query_func(conn_use:sqlite3.Connection,
                         WHERE
                             o.order_purchase_timestamp BETWEEN ? AND ?;"""
 
+    order_payment_query = """SELECT
+                            op.order_id,
+                            op.payment_sequential,
+                            op.payment_type,
+                            op.payment_installments,
+                            op.payment_value
+                        FROM 
+                            order_payments op
+                        JOIN orders o ON op.order_id = o.order_id
+                        WHERE
+                            o.order_purchase_timestamp BETWEEN ? AND ?;"""
+
+    product_cat_translation_query = """SELECT
+                                        pcnt.product_category_name,
+                                        pcnt.product_category_name_english
+                                    FROM
+                                        product_category_name_translation pcnt
+                                    JOIN products ps ON pcnt.product_category_name = ps.product_category_name
+                                    JOIN order_items oi ON ps.product_id = oi.product_id
+                                    JOIN orders o ON oi.order_id = o.order_id
+                                    WHERE
+                                        o.order_purchase_timestamp BETWEEN ? AND ?;"""
+
+
+
     # Test query only; disable when in actual use
     # order_items_query = """SELECT
     #                         oi.order_id,
@@ -174,16 +199,7 @@ def order_query_func(conn_use:sqlite3.Connection,
     #                         WHERE
     #                             o.order_purchase_timestamp BETWEEN ? AND ?;"""
 
-    product_cat_translation_query = """SELECT
-                                        pcnt.product_category_name,
-                                        pcnt.product_category_name_english
-                                    FROM
-                                        product_category_name_translation pcnt
-                                    JOIN products ps ON pcnt.product_category_name = ps.product_category_name
-                                    JOIN order_items oi ON ps.product_id = oi.product_id
-                                    JOIN orders o ON oi.order_id = o.order_id
-                                    WHERE
-                                        o.order_purchase_timestamp BETWEEN ? AND ?;"""
+
 
     # Connect & query
     with conn_use:
@@ -191,19 +207,23 @@ def order_query_func(conn_use:sqlite3.Connection,
         order_seller_result = pd.read_sql_query(order_seller_query, con=conn_use, params=[min_date, max_date])
         order_reviews_result = pd.read_sql_query(order_reviews_query, con=conn_use, params=[min_date, max_date])
         order_products_result = pd.read_sql_query(order_products_query, con=conn_use, params=[min_date, max_date])
+        order_payment_result = pd.read_sql_query(order_payment_query, con=conn_use, params=[min_date, max_date])
         # order_items_result = pd.read_sql_query(order_items_query, con=conn_use, params=[min_date, max_date]) # testing only; disable or enable as required
         # review_comment_result = pd.read_sql_query(review_comment_query, con=conn_use, params=[min_date, max_date]) # testing only; disable or enable as required
-        product_translation_result = pd.read_sql_query(product_cat_translation_query, con=conn_use, params=[min_date, max_date])
+        product_translation_result = pd.read_sql_query(product_cat_translation_query, con=conn_use,
+                                                       params=[min_date, max_date])
+
 
     # joining
     # list of df to join
-    df_list_to_use = [order_result, order_seller_result, order_reviews_result, order_products_result]
+    df_list_to_use = [order_result, order_seller_result, order_reviews_result, order_products_result,
+                      order_payment_result]
 
     # join 1 -- join review and
     final_df = p_pd.df_batch_merge(df_list_to_use, "order_id", "3")
     # test query order items
 
-    # grouping
+    # product translation query and drop duplicate
     product_translation_result_final = product_translation_result.drop_duplicates()
 
     # Query_out if not data_only (i.e.: data_only=False)
